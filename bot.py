@@ -38,30 +38,32 @@ main_kb = ReplyKeyboardMarkup(
 )
 
 async def send_response(message: Message, text: str):
-    # Ищем тег [IMAGES: 1, 2, 3]
-    match = re.search(r'\[IMAGES:\s*([\d,\s]+)\]', text)
-    
-    # Очищаем текст от тега (чтобы он не выводился клиенту)
+    # Очищаем текст от любых скрытых тегов, если ИИ их вдруг написал
     clean_text = re.sub(r'\[IMAGES:\s*[\d,\s]+\]', '', text).strip()
     
-    # Если тег есть, отправляем текст и фото по ID
-    if match:
-        await message.answer(clean_text, parse_mode="Markdown")
-        ids = [int(x.strip()) for x in match.group(1).split(',')]
-        for product_id in ids:
-            product = next((p for p in catalog.get_all() if p.id == product_id), None)
-            if product and product.image_url:
+    # Отправляем текстовый ответ
+    await message.answer(clean_text, parse_mode="Markdown")
+    
+    # --- ЖЕЛЕЗОБЕТОННЫЙ ПОИСК ФОТО ---
+    all_products = catalog.get_all()
+    text_lower = clean_text.lower()
+    
+    sent_count = 0
+    for product in all_products:
+        # Если название товара есть в тексте ответа (например, "худи")
+        if product.name.lower() in text_lower:
+            if product.image_url and sent_count < 3: # Отправляем максимум 3 фото
                 try:
                     await message.answer_photo(
-                        photo=product.image_url, 
-                        caption=f"**{product.name}** — {product.price} ₸", 
+                        photo=product.image_url,
+                        caption=f"**{product.name}** — {product.price} ₸",
                         parse_mode="Markdown"
                     )
+                    sent_count += 1
+                    # Пауза, чтобы Телеграм не ругался на спам
+                    await asyncio.sleep(0.5)
                 except Exception as e:
-                    logger.error(f"Ошибка отправки фото (ID {product_id}): {e}")
-    else:
-        # Если тега нет, просто отправляем текст
-        await message.answer(clean_text, parse_mode="Markdown")
+                    logger.error(f"Ошибка отправки фото для {product.name}: {e}")
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
