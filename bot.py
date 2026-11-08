@@ -62,13 +62,13 @@ async def cmd_admin(message: Message):
 async def btn_stock(message: Message):
     await message.answer("Секунду, посмотрю в каталоге...")
     response = await assistant.get_response("Что есть в наличии?")
-    await message.answer(response)
+    await message.answer(response, parse_mode="Markdown")
 
 @dp.message(F.text == "Цены")
 async def btn_prices(message: Message):
     await message.answer("Секунду, проверяю цены...")
     response = await assistant.get_response("Сколько стоят все товары?")
-    await message.answer(response)
+    await message.answer(response, parse_mode="Markdown")
 
 @dp.message(F.text == "Помощь")
 async def btn_help(message: Message):
@@ -88,7 +88,7 @@ async def handle_text(message: Message):
     # Получаем ответ от ИИ
     try:
         response = await assistant.get_response(message.text)
-        await message.answer(response)
+        await message.answer(response, parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Ошибка при ответе: {e}")
         await message.answer("Ой, что-то пошло не так. Попробуй еще раз.")
