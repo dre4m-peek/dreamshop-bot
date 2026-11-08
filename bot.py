@@ -37,29 +37,31 @@ main_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Вспомогательная функция для отправки ответа (с картинками или без)
 async def send_response(message: Message, text: str):
     # Ищем тег [IMAGES: 1, 2, 3]
     match = re.search(r'\[IMAGES:\s*([\d,\s]+)\]', text)
+    
+    # Очищаем текст от тега (чтобы он не выводился клиенту)
+    clean_text = re.sub(r'\[IMAGES:\s*[\d,\s]+\]', '', text).strip()
+    
+    # Если тег есть, отправляем текст и фото по ID
     if match:
-        # Вырезаем тег из текста
-        clean_text = re.sub(r'\[IMAGES:\s*[\d,\s]+\]', '', text).strip()
         await message.answer(clean_text, parse_mode="Markdown")
-        
-        # Получаем список ID
         ids = [int(x.strip()) for x in match.group(1).split(',')]
-        
-        # Отправляем картинки (если они есть в таблице)
         for product_id in ids:
             product = next((p for p in catalog.get_all() if p.id == product_id), None)
             if product and product.image_url:
                 try:
-                    await message.answer_photo(photo=product.image_url, caption=f"**{product.name}** — {product.price} ₸", parse_mode="Markdown")
+                    await message.answer_photo(
+                        photo=product.image_url, 
+                        caption=f"**{product.name}** — {product.price} ₸", 
+                        parse_mode="Markdown"
+                    )
                 except Exception as e:
-                    logger.error(f"Ошибка отправки фото: {e}")
+                    logger.error(f"Ошибка отправки фото (ID {product_id}): {e}")
     else:
-        # Если тегов нет, просто отправляем текст
-        await message.answer(text, parse_mode="Markdown")
+        # Если тега нет, просто отправляем текст
+        await message.answer(clean_text, parse_mode="Markdown")
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
